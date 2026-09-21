@@ -34,3 +34,10 @@ coverage/
 .vite/
 .turbo/
 *.tsbuildinfo
+
+# --- 声纹校形台运行产物 ---
+voicebench.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

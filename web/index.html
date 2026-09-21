@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>声纹校形台</title>
+<style>
+  :root{
+    --bg:#10131a; --panel:#181d27; --panel2:#1f2634; --line:#2c3547;
+    --fg:#e7ecf5; --muted:#93a0b5; --accent:#7db4ff;
+    --f1:#ff6b6b; --f2:#ffd166; --f3:#06d6a0; --f4:#7aa2ff;
+    --warn:#ff5d5d; --ok:#34d399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+  header{padding:12px 20px;background:var(--panel);
+    border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;letter-spacing:2px}
+  header .sub{color:var(--muted);font-size:12px}
+  select,button,input{background:var(--panel2);color:var(--fg);
+    border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:13px}
+  button{cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:#23304a;border-color:#3a548a}
+  main{display:grid;grid-template-columns:1fr 330px;gap:14px;padding:14px}
+  .card{background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:12px}
+  .card h2{font-size:14px;margin:0 0 8px;color:var(--muted);font-weight:600}
+  #stage{overflow:auto}
+  svg{display:block;background:#0c0f15;border-radius:8px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .tools button.active{outline:2px solid var(--accent)}
+  aside{display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 90px);overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto}
+  th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:500}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px}
+  .pill.auto{background:#23304a;color:#9fc0ff}
+  .pill.move{background:#4a3423;color:#ffd166}
+  .pill.path{background:#234a37;color:#7ff0bd}
+  .pill.lock{background:#4a2334;color:#ff9ec4}
+  .issue{color:#ffb3b3;font-size:12px;margin:3px 0}
+  .ok{color:var(--ok)}
+  .muted{color:var(--muted);font-size:12px}
+  .conflict{border:1px solid #6b3030;background:#2a1717;border-radius:8px;padding:8px;margin-bottom:8px}
+  .conflict button{margin:3px 4px 0 0;padding:3px 8px;font-size:12px}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:#0d1322;border:1px solid var(--line);padding:8px 16px;border-radius:8px;
+    display:none;max-width:80%}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+  svg text{font-size:10px;fill:var(--muted)}
+  .vlabel{fill:#cdd8ee;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>声纹校形台</h1>
+  <span class="sub" id="metaLine">加载中…</span>
+  <label>说话人
+    <select id="speakerSel"></select>
+  </label>
+  <label>发音版本
+    <select id="utterSel"></select>
+  </label>
+  <span class="sub">候选集合：<b id="setTag">–</b></span>
+  <span style="flex:1"></span>
+  <button id="rerunBtn" class="primary">重跑追踪（候选重算 v2）</button>
+  <button id="undoBtn">撤销最后操作</button>
+  <button id="exportBtn">导出包</button>
+  <button id="importBtn">导入包复核</button>
+  <button id="resetBtn">清空并重导 fixture</button>
+  <input type="file" id="importFile" accept="application/json" hidden>
+</header>
+
+<main>
+  <section class="card" id="stage">
+    <h2>声谱图 · F1–F4 轨迹 · 元音区间 · 可信度</h2>
+    <div class="tools">
+      <button data-mode="drag" class="active">拖动单点</button>
+      <button data-mode="path">重选候选路径</button>
+      <button data-mode="lock">锁定边界帧</button>
+      <span class="hint" id="modeHint">拖动彩色轨迹点到同帧同带的空心候选点；灰色为算法原始候选，始终保留。</span>
+    </div>
+    <div id="svgHost"></div>
+    <div class="legend">
+      <span><i style="background:var(--f1)"></i>F1</span>
+      <span><i style="background:var(--f2)"></i>F2</span>
+      <span><i style="background:var(--f3)"></i>F3</span>
+      <span><i style="background:var(--f4)"></i>F4</span>
+      <span><i style="background:#9aa7bd"></i>未采用候选</span>
+      <span><i style="background:#ffd166;border-radius:50%"></i>已锁定边界帧</span>
+      <span><i style="background:rgba(125,180,255,.25)"></i>元音区间</span>
+      <span><i style="background:#000"></i>缺帧 / 分析窗外（不插值）</span>
+    </div>
+    <div id="issueBox" style="margin-top:10px"></div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>冲突列表（不按距离自动选择）</h2>
+      <div id="conflictBox"><div class="muted">暂无</div></div>
+      <div id="unresolvedBox" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>操作序列（稀疏）</h2>
+      <table id="opsTable">
+        <thead><tr><th>#</th><th>类型</th><th>集合</th><th>帧/带</th><th>来源</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>运行记录</h2>
+      <div id="logBox" class="muted" style="max-height:160px;overflow:auto"></div>
+    </div>
+    <div class="card">
+      <h2>数据口径</h2>
+      <div class="muted" style="font-size:12px">
+        帧固定 100fps；分析窗半开，右端帧不入窗；缺帧不做零频率插值。
+        同帧必须 F1&lt;F2&lt;F3&lt;F4；禁止跨不可见帧交换身份。
+        重映射容差 ±40Hz；候选 ≥2 个即进冲突，交研究者裁决。
+      </div>
+    </div>
+  </aside>
+</main>
+<div id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>声纹校形台</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <h1>声纹校形台</h1>
+  <div class="controls">
+    <label>说话人/发音
+      <select id="uttSelect"></select>
+    </label>
+    <label>候选代
+      <select id="genSelect">
+        <option value="1">gen1 原算法</option>
+        <option value="2">gen2 重算候选</option>
+      </select>
+    </label>
+    <span class="tools">
+      <button data-tool="drag" class="tool active">拖点</button>
+      <button data-tool="path" class="tool">重选路径</button>
+      <button data-tool="lock" class="tool">锁定边界</button>
+    </span>
+    <label id="pathRankWrap" style="display:none">路径轨迹
+      <select id="pathRank">
+        <option value="1">F1</option>
+        <option value="2" selected>F2</option>
+        <option value="3">F3</option>
+        <option value="4">F4</option>
+      </select>
+    </label>
+    <button id="pathSubmit" style="display:none">提交路径</button>
+    <button id="replayBtn">重跑追踪并映射</button>
+    <a class="btn" href="/api/export" target="_blank">导出修订包</a>
+    <button id="reimportBtn" title="清空数据库并重新导入固定 fixture">清空重导入</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="stage">
+    <div id="chartWrap">
+      <svg id="chart" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div id="hint" class="hint">选择工具后在图上操作: 拖点改变单点; 重选路径先拖选帧范围再逐帧点候选; 锁定边界点击元音区间端点。</div>
+  </section>
+
+  <aside class="side">
+    <section class="panel">
+      <h2>可信度</h2>
+      <div id="credInfo" class="cred">—</div>
+      <div id="issues"></div>
+    </section>
+    <section class="panel">
+      <h2>稀疏操作</h2>
+      <ul id="opsList" class="ops"></ul>
+    </section>
+    <section class="panel">
+      <h2>冲突列表 <small>(不按距离强选)</small></h2>
+      <ul id="conflictList" class="conflicts"></ul>
+    </section>
+    <section class="panel">
+      <h2>运行记录</h2>
+      <ul id="runsList" class="runs"></ul>
+    </section>
+  </aside>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
